@@ -35,7 +35,9 @@ const Authors = (props) => {
         </tbody>
       </table>
 
-      <BirthYearForm authors={authors} />
+      {props.token && (
+        <BirthYearForm authors={authors} setError={props.setError} />
+      )}
     </div>
   )
 }
