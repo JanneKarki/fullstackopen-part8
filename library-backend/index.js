@@ -1,5 +1,6 @@
 const { ApolloServer } = require("@apollo/server")
 const { startStandaloneServer } = require("@apollo/server/standalone")
+const { v1: uuid } = require("uuid")
 
 let authors = [
   {
@@ -93,19 +94,84 @@ let books = [
   },
 ]
 
-/*
-  you can remove the placeholder query once your first one has been implemented 
-*/
+const typeDefs = /* GraphQL */ `
+  type Book {
+    title: String!
+    published: Int!
+    author: String!
+    id: ID!
+    genres: [String!]!
+  }
 
-const typeDefs = `
+  type Author {
+    name: String!
+    born: Int
+    id: ID!
+    bookCount: Int!
+  }
+
   type Query {
-    dummy: Int
+    bookCount: Int!
+    authorCount: Int!
+    allBooks(author: String, genre: String): [Book!]!
+    allAuthors: [Author!]!
+  }
+
+  type Mutation {
+    addBook(
+      title: String!
+      author: String!
+      published: Int!
+      genres: [String!]!
+    ): Book
+
+    editAuthor(name: String!, setBornTo: Int!): Author
   }
 `
 
 const resolvers = {
   Query: {
-    dummy: () => 0,
+    bookCount: () => books.length,
+    authorCount: () => authors.length,
+    allBooks: (root, args) => {
+      let filtered = books
+
+      if (args.author) {
+        filtered = filtered.filter((b) => b.author === args.author)
+      }
+
+      if (args.genre) {
+        filtered = filtered.filter((b) => b.genres.includes(args.genre))
+      }
+
+      return filtered
+    },
+    allAuthors: () => authors,
+  },
+  Author: {
+    bookCount: (root) => books.filter((b) => b.author === root.name).length,
+  },
+  Mutation: {
+    addBook: (root, args) => {
+      const book = { ...args, id: uuid() }
+      books = books.concat(book)
+
+      if (!authors.find((a) => a.name === args.author)) {
+        authors = authors.concat({ name: args.author, id: uuid() })
+      }
+
+      return book
+    },
+    editAuthor: (root, args) => {
+      const author = authors.find((a) => a.name === args.name)
+      if (!author) {
+        return null
+      }
+
+      const updatedAuthor = { ...author, born: args.setBornTo }
+      authors = authors.map((a) => (a.name === args.name ? updatedAuthor : a))
+      return updatedAuthor
+    },
   },
 }
 
